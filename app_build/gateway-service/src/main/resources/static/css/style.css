@@ -1,0 +1,43 @@
+body {
+    background-color: #f4f6f9;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.nav-pills .nav-link {
+    color: #495057;
+    border-radius: 10px;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
+}
+
+.nav-pills #clientes-tab.active {
+    background-color: #198754;
+    box-shadow: 0 4px 10px rgba(25, 135, 84, 0.25);
+}
+
+.nav-pills #representantes-tab.active {
+    background-color: #ffc107;
+    color: #000;
+    box-shadow: 0 4px 10px rgba(255, 193, 7, 0.25);
+}
+
+.card {
+    transition: transform 0.15s ease-in-out;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.88rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.badge {
+    font-weight: 500;
+}

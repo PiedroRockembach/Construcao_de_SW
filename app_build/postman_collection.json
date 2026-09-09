@@ -1,0 +1,238 @@
+{
+  "info": {
+    "name": "Microservicos Spring Cloud - Gateway API",
+    "_postman_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "Coleção de testes para Peças, Clientes e Representantes Comerciais acessando exclusivamente o API Gateway (porta 8080).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Peças",
+      "item": [
+        {
+          "name": "1. Cadastrar Peça",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroIdentificacao\": \"PEC-1001\",\n  \"nome\": \"Disco de Freio Ventilado\",\n  \"descricao\": \"Aço carbono com tratamento térmico\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/pecas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pecas"]
+            }
+          }
+        },
+        {
+          "name": "2. Listar Todas as Peças",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/pecas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pecas"]
+            }
+          }
+        },
+        {
+          "name": "3. Consultar Peça por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/pecas/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pecas", "1"]
+            }
+          }
+        },
+        {
+          "name": "4. Consultar Peça por Nome",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/pecas/busca?nome=Freio",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pecas", "busca"],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "Freio"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "1. Cadastrar Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"123.456.789-00\",\n  \"nome\": \"Lucas Ribeiro\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "clientes"]
+            }
+          }
+        },
+        {
+          "name": "2. Listar Todos os Clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "clientes"]
+            }
+          }
+        },
+        {
+          "name": "3. Consultar Cliente por CPF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes/cpf/123.456.789-00",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "clientes", "cpf", "123.456.789-00"]
+            }
+          }
+        },
+        {
+          "name": "4. Consultar Cliente por Nome",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes/busca?nome=Lucas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "clientes", "busca"],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "Lucas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Representantes Comerciais",
+      "item": [
+        {
+          "name": "1. Cadastrar Representante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"987.654.321-11\",\n  \"nome\": \"Mariana Castro\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/representantes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "representantes"]
+            }
+          }
+        },
+        {
+          "name": "2. Listar Todos os Representantes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/representantes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "representantes"]
+            }
+          }
+        },
+        {
+          "name": "3. Consultar Representante por CPF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/representantes/cpf/987.654.321-11",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "representantes", "cpf", "987.654.321-11"]
+            }
+          }
+        },
+        {
+          "name": "4. Consultar Representante por Nome",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/representantes/busca?nome=Mariana",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "representantes", "busca"],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "Mariana"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
