@@ -4,6 +4,8 @@ import br.pucrs.construcao.pecas.dto.PecaRequestDTO;
 import br.pucrs.construcao.pecas.dto.PecaResponseDTO;
 import br.pucrs.construcao.pecas.model.Peca;
 import br.pucrs.construcao.pecas.repository.PecaRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,9 +17,13 @@ import java.util.stream.Collectors;
 public class PecaService {
 
     private final PecaRepository pecaRepository;
+    private final Counter pecasCreatedCounter;
 
-    public PecaService(PecaRepository pecaRepository) {
+    public PecaService(PecaRepository pecaRepository, MeterRegistry meterRegistry) {
         this.pecaRepository = pecaRepository;
+        this.pecasCreatedCounter = Counter.builder("pecas.created.total")
+                .description("Total de peças cadastradas com sucesso")
+                .register(meterRegistry);
     }
 
     public PecaResponseDTO cadastrar(PecaRequestDTO dto) {
@@ -32,6 +38,7 @@ public class PecaService {
                 dto.getDescricao()
         );
         Peca salva = pecaRepository.save(peca);
+        pecasCreatedCounter.increment();
         return PecaResponseDTO.fromEntity(salva);
     }
 

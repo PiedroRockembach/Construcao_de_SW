@@ -84,5 +84,9 @@ echo "Eureka Dashboard: http://localhost:8761"
 echo "Config Server: http://localhost:8888"
 echo "=================================================="
 
+# 5. Monitoramento (Prometheus e Grafana)
+echo "[5/5] Iniciando Prometheus e Grafana (Docker)..."
+./start-monitoring.sh || echo "Aviso: Monitoramento pode ser iniciado manualmente via ./start-monitoring.sh"
+
 # Manter o processo vivo aguardando os serviços
 wait

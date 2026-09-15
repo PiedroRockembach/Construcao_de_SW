@@ -4,6 +4,8 @@ import br.pucrs.construcao.clientes.dto.ClienteRequestDTO;
 import br.pucrs.construcao.clientes.dto.ClienteResponseDTO;
 import br.pucrs.construcao.clientes.model.Cliente;
 import br.pucrs.construcao.clientes.repository.ClienteRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,9 +17,13 @@ import java.util.stream.Collectors;
 public class ClienteService {
 
     private final ClienteRepository clienteRepository;
+    private final Counter clientesCreatedCounter;
 
-    public ClienteService(ClienteRepository clienteRepository) {
+    public ClienteService(ClienteRepository clienteRepository, MeterRegistry meterRegistry) {
         this.clienteRepository = clienteRepository;
+        this.clientesCreatedCounter = Counter.builder("clientes.created.total")
+                .description("Total de clientes cadastrados com sucesso")
+                .register(meterRegistry);
     }
 
     public ClienteResponseDTO cadastrar(ClienteRequestDTO dto) {
@@ -29,6 +35,7 @@ public class ClienteService {
 
         Cliente cliente = new Cliente(cpfLimpo, dto.getNome().trim());
         Cliente salvo = clienteRepository.save(cliente);
+        clientesCreatedCounter.increment();
         return ClienteResponseDTO.fromEntity(salvo);
     }
 

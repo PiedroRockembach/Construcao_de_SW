@@ -21,4 +21,8 @@ for port in 8888 8761 8080 8081 8082 8083; do
     fuser -k "${port}/tcp" 2>/dev/null || true
 done
 
+# Encerra containers de monitoramento se ativos
+./stop-monitoring.sh 2>/dev/null || true
+
 echo "Todos os serviços foram finalizados com sucesso."
+

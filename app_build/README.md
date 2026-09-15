@@ -68,3 +68,38 @@ Todas as requisições apontam estritamente para o **API Gateway**:
 
 - **Eureka Dashboard**:
   [http://localhost:8761](http://localhost:8761)
+
+---
+
+## 📊 Observabilidade: Métricas com Prometheus e Grafana
+
+O projeto inclui suporte nativo a métricas via **Spring Boot Actuator** e **Micrometer Prometheus**, suportados por containers Docker.
+
+### 🐳 Containers de Suporte
+- **Prometheus** (`porta 9090`): Realiza scraping a cada 5 segundos nos endpoints `/actuator/prometheus` de todos os serviços.
+- **Grafana** (`porta 3000`): Painéis em tempo real com datasource e dashboard provisionados automaticamente.
+
+### 🔗 Pontos de Acesso de Monitoramento:
+- **Painel Grafana**: 👉 **[http://localhost:3000](http://localhost:3000)** (Login padrão: `admin` / `admin`)
+  - *Dashboard Pré-carregado*: Navegue em **Dashboards** > pasta **Microserviços** > **Microserviços Spring Cloud - Dashboard Geral** ou acesse diretamente: [http://localhost:3000/d/spring-microservices](http://localhost:3000/d/spring-microservices).
+- **Console Prometheus**: 👉 **[http://localhost:9090](http://localhost:9090)**
+  - Verifique os alvos monitorados em: [http://localhost:9090/targets](http://localhost:9090/targets).
+
+### 🚀 Comandos Dedicados de Monitoramento:
+- **Iniciar apenas Prometheus e Grafana**:
+  ```bash
+  cd app_build
+  ./start-monitoring.sh
+  ```
+- **Parar Prometheus e Grafana**:
+  ```bash
+  cd app_build
+  ./stop-monitoring.sh
+  ```
+
+### 📈 Métricas Customizadas Disponíveis:
+- `pecas_created_total`: Contador de peças cadastradas com sucesso.
+- `clientes_created_total`: Contador de clientes cadastrados com sucesso.
+- `representantes_created_total`: Contador de representantes cadastrados com sucesso.
+- `http_server_requests_seconds_count` e `_sum`: Taxa de requisições e latência média por rota e status HTTP.
+- `jvm_memory_used_bytes` / `jvm_threads_live_threads`: Métricas de saúde e recursos da JVM.
