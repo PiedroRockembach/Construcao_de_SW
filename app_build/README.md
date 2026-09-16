@@ -68,3 +68,44 @@ Todas as requisições apontam estritamente para o **API Gateway**:
 
 - **Eureka Dashboard**:
   [http://localhost:8761](http://localhost:8761)
+
+---
+
+## 📊 Observabilidade (Métricas: Micrometer + Prometheus + Grafana)
+
+Todos os módulos expõem métricas em `/actuator/prometheus` (tag comum `application`). O `start-all.sh` sobe automaticamente
+(se o Docker estiver disponível) os containers de **Prometheus** e **Grafana** definidos em `observability/docker-compose.yml`.
+
+| Ferramenta | URL | Observação |
+| :--- | :--- | :--- |
+| Prometheus | [http://localhost:9090](http://localhost:9090) | Veja os alvos em `/targets` (6 serviços devem estar **UP**) |
+| Grafana | [http://localhost:3000](http://localhost:3000) | Login `admin`/`admin` — dashboard **Microsserviços — Visão Geral** |
+
+Subir/derrubar apenas a stack de observabilidade:
+```bash
+cd app_build/observability
+docker compose up -d     # sobe
+docker compose down      # derruba (use -v para apagar os dados)
+```
+
+Credenciais do Grafana podem ser alteradas via variáveis `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD`.
+
+**Métricas de negócio customizadas:**
+
+| Métrica Prometheus | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `pecas_cadastro_total{resultado}` / `clientes_cadastro_total{resultado}` / `representantes_cadastro_total{resultado}` | Counter | Cadastros por resultado (`sucesso` / `conflito`) |
+| `pecas_consulta_nao_encontrada_total` (idem clientes/representantes) | Counter | Consultas que retornaram 404 |
+| `pecas_registros` / `clientes_registros` / `representantes_registros` | Gauge | Quantidade atual de registros na base |
+
+**Exemplos de PromQL:**
+```promql
+# Requisições por segundo por serviço
+sum by (application) (rate(http_server_requests_seconds_count[1m]))
+
+# Latência p95 por serviço
+histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket[1m])))
+
+# Peças cadastradas com sucesso
+pecas_cadastro_total{resultado="sucesso"}
+```

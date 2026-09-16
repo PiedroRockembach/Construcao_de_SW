@@ -8,6 +8,7 @@ O ecossistema implementa rigorosamente os padrões solicitados:
 - **Service Discovery & Registry**: Spring Cloud Netflix Eureka Server para registro dinâmico e localização transparente dos nós de serviço.
 - **API Gateway**: Spring Cloud Gateway como único ponto de entrada para clientes e frontend, com roteamento dinâmico baseado no Eureka, balanceamento de carga e configuração CORS.
 - **Frontend / Client Testing**: Interface Web SPA intuitiva servida pelo próprio Gateway (ou acessível via navegador) e coleção Postman para testes integrados direcionados exclusivamente ao Gateway (`http://localhost:8080`).
+- **Observabilidade (Métricas)** *(Ciclo 2)*: todos os módulos expõem métricas via **Micrometer + Spring Boot Actuator** no formato Prometheus; um container **Prometheus** coleta (scrape) essas métricas e um container **Grafana** as visualiza em dashboards provisionados automaticamente. Detalhes na **Seção 7**.
 
 ---
 
@@ -188,3 +189,115 @@ app_build/
 │   └── src/main/...
 └── postman_collection.json               # Coleção de testes para Postman/Insomnia
 ```
+
+
+---
+
+## 7. Observabilidade: Métricas com Prometheus & Grafana (Ciclo 2)
+
+> Referência: `observabilidade.html` (Pilar 2 — Métricas: Micrometer + Actuator + Prometheus + Grafana).
+> **Escopo deste ciclo**: somente o pilar de **métricas**. Logs estruturados (JSON/Logstash) e rastreamento distribuído (OpenTelemetry/Jaeger) ficam **fora de escopo** e são candidatos a ciclos futuros.
+
+### 7.1. Requisitos Funcionais
+
+- **RF17 - Exposição de Métricas**: Todos os 6 módulos (`config-server`, `discovery-server`, `gateway-service`, `pecas-service`, `clientes-service`, `representantes-service`) devem expor o endpoint `GET /actuator/prometheus` no formato de texto do Prometheus.
+- **RF18 - Métricas Padrão**: Cada módulo deve publicar as métricas automáticas do Micrometer/Actuator:
+  - HTTP: `http_server_requests_seconds` (contagem, soma, máximo e **buckets de histograma** para cálculo de percentis p50/p95/p99), com tags `uri`, `method`, `status`, `outcome`.
+  - JVM: memória (`jvm_memory_used_bytes`), GC (`jvm_gc_pause_seconds`), threads (`jvm_threads_live_threads`), classes.
+  - Sistema/Processo: `process_cpu_usage`, `system_cpu_usage`, `process_uptime_seconds`.
+  - Pool de conexões (serviços com JPA): `hikaricp_connections_*`.
+  - Gateway: métricas de rotas do Spring Cloud Gateway (`spring_cloud_gateway_requests_seconds`) com tags `routeId`, `httpStatusCode`.
+- **RF19 - Tag Comum de Aplicação**: Toda métrica deve conter a tag `application=${spring.application.name}`, permitindo filtrar/agrupar por serviço no Grafana.
+- **RF20 - Métricas de Negócio Customizadas** (Micrometer `Counter`/`Gauge`, conforme exemplo `users.created.total` da referência):
+
+  | Serviço | Métrica (nome Micrometer → nome Prometheus) | Tipo | Tags | Descrição |
+  | :--- | :--- | :--- | :--- | :--- |
+  | `pecas-service` | `pecas.cadastro` → `pecas_cadastro_total` | Counter | `resultado=sucesso\|conflito` | Tentativas de cadastro de peças |
+  | `pecas-service` | `pecas.consulta.nao_encontrada` → `pecas_consulta_nao_encontrada_total` | Counter | — | Consultas por ID/número que retornaram 404 |
+  | `pecas-service` | `pecas.registros` → `pecas_registros` | Gauge | — | Quantidade atual de peças na base |
+  | `clientes-service` | `clientes.cadastro` → `clientes_cadastro_total` | Counter | `resultado=sucesso\|conflito` | Tentativas de cadastro de clientes |
+  | `clientes-service` | `clientes.consulta.nao_encontrada` → `clientes_consulta_nao_encontrada_total` | Counter | — | Consultas por CPF que retornaram 404 |
+  | `clientes-service` | `clientes.registros` → `clientes_registros` | Gauge | — | Quantidade atual de clientes na base |
+  | `representantes-service` | `representantes.cadastro` → `representantes_cadastro_total` | Counter | `resultado=sucesso\|conflito` | Tentativas de cadastro de representantes |
+  | `representantes-service` | `representantes.consulta.nao_encontrada` → `representantes_consulta_nao_encontrada_total` | Counter | — | Consultas por CPF que retornaram 404 |
+  | `representantes-service` | `representantes.registros` → `representantes_registros` | Gauge | — | Quantidade atual de representantes na base |
+
+  A instrumentação ocorre na camada **Service** (ex.: `PecaService`), injetando `MeterRegistry` via construtor — sem alterar contratos REST existentes.
+
+- **RF21 - Container Prometheus**: Um container Prometheus deve coletar as métricas de todos os módulos a cada **5s** e ficar acessível em `http://localhost:9090`, com retenção local de dados em volume Docker.
+- **RF22 - Container Grafana**: Um container Grafana deve ficar acessível em `http://localhost:3000`, com:
+  - **Datasource Prometheus provisionado automaticamente** (sem configuração manual pela UI).
+  - **Dashboard "Microsserviços — Visão Geral" provisionado automaticamente**, contendo os painéis:
+    1. Status (UP/DOWN) de cada serviço (`up`).
+    2. Taxa de requisições por serviço (req/s).
+    3. Latência p95 por serviço (histograma).
+    4. Taxa de erros HTTP 4xx/5xx por serviço.
+    5. Requisições por rota no Gateway.
+    6. Uso de memória heap da JVM por serviço.
+    7. Uso de CPU do processo por serviço.
+    8. Cadastros de negócio (sucesso × conflito) e quantidade de registros por domínio.
+  - Variável de dashboard `application` (multi-seleção) para filtrar serviços.
+- **RF23 - Orquestração**: Um único `docker compose up -d` (em `app_build/observability/`) sobe Prometheus + Grafana. Os scripts `start-all.sh`/`stop-all.sh` passam a subir/derrubar a stack de observabilidade quando o Docker estiver disponível (sem falhar caso não esteja).
+
+### 7.2. Requisitos Não-Funcionais
+
+- **Baixo impacto**: nenhuma alteração nos endpoints de negócio, portas ou fluxo de roteamento existentes.
+- **Versões fixadas** das imagens Docker (sem `latest`) para reprodutibilidade: `prom/prometheus:v2.53.x` e `grafana/grafana:11.x`.
+- **Microsserviços continuam rodando no host** (via `start-all.sh`/`java -jar`); os containers alcançam o host por `host.docker.internal` (mapeado com `extra_hosts: host-gateway`, compatível com Linux).
+- **Segurança**: credenciais do Grafana configuráveis via variáveis de ambiente (`GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD`, padrão `admin`/`admin` apenas para ambiente acadêmico/local); cadastro de novos usuários desabilitado.
+- **Configuração centralizada preservada**: as propriedades de métricas comuns ficam em `config-repo/application.yml` (servidas pelo Config Server), com fallback equivalente no `application.yml` local de cada módulo, para que as métricas funcionem mesmo se o Config Server estiver indisponível.
+
+### 7.3. Arquitetura de Observabilidade
+
+```
+   Host (java -jar)                                               Docker (compose)
+ +------------------------------------------+          +-------------------------------------+
+ | config-server       :8888 /actuator/prom |<--+      |                                     |
+ | discovery-server    :8761 /actuator/prom |<--+      |   +-----------------------------+   |
+ | gateway-service     :8080 /actuator/prom |<--+------+---|  Prometheus :9090           |   |
+ | pecas-service       :8081 /actuator/prom |<--+ scrape   |  (scrape 5s, TSDB em volume)|   |
+ | clientes-service    :8082 /actuator/prom |<--+ via      +--------------+--------------+   |
+ | representantes-svc  :8083 /actuator/prom |<--+ host.docker.internal    | PromQL          |
+ +------------------------------------------+          |                  v                  |
+                                                       |   +-----------------------------+   |
+                  Usuário (navegador) ---------------->+---|  Grafana :3000              |   |
+                                                       |   |  datasource + dashboard     |   |
+                                                       |   |  provisionados              |   |
+                                                       |   +-----------------------------+   |
+                                                       +-------------------------------------+
+```
+
+**Decisão — descoberta de alvos**: uso de **`static_configs`** no Prometheus (portas fixas conhecidas) em vez de `eureka_sd_configs`. Justificativa: as portas são fixas por especificação, o Config Server e o Eureka não se auto-registram, e a configuração estática é mais simples e previsível em ambiente local. Cada alvo recebe o label `application` equivalente ao nome do serviço.
+
+### 7.4. Stack & Alterações por Módulo
+
+| Item | Alteração |
+| :--- | :--- |
+| `pom.xml` dos 6 módulos | + `io.micrometer:micrometer-registry-prometheus` (versão gerida pelo Spring Boot BOM); `spring-boot-starter-actuator` presente em todos |
+| `config-repo/application.yml` (+ cópia em `config-server/src/main/resources/config-repo/`) | exposição `health,info,refresh,prometheus,metrics`; `management.metrics.tags.application`; `management.metrics.distribution.percentiles-histogram.http.server.requests=true` |
+| `application.yml` locais dos 6 módulos | mesmas propriedades de métricas (fallback) |
+| `*Service.java` dos 3 serviços de negócio | Counters e Gauge descritos no RF20 |
+| `app_build/observability/` | **novo** — `docker-compose.yml`, `prometheus/prometheus.yml`, `grafana/provisioning/datasources/prometheus.yml`, `grafana/provisioning/dashboards/dashboards.yml`, `grafana/dashboards/microsservicos-overview.json` |
+| `start-all.sh` / `stop-all.sh` | sobem/derrubam a stack de observabilidade (se Docker disponível) e exibem as URLs |
+| `README.md` e UI do Gateway | seção de Observabilidade com links para Prometheus (`:9090`) e Grafana (`:3000`) e exemplos de PromQL |
+
+**Portas adicionadas:**
+
+| Componente | Porta | Descrição |
+| :--- | :--- | :--- |
+| **Prometheus** (container) | `9090` | Coleta e armazenamento de séries temporais; UI de consultas PromQL |
+| **Grafana** (container) | `3000` | Dashboards de visualização |
+
+### 7.5. Fluxo de Dados das Métricas
+
+1. Cada requisição HTTP e evento de negócio atualiza medidores no `MeterRegistry` (em memória) do respectivo serviço.
+2. A cada 5s o Prometheus executa `GET http://host.docker.internal:<porta>/actuator/prometheus` em cada alvo, armazenando as amostras em sua TSDB (volume `prometheus-data`).
+3. O Grafana consulta o Prometheus via PromQL (ex.: `histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket[1m])))`) e renderiza os painéis.
+4. Métricas são efêmeras nos serviços (reiniciar um serviço zera os counters); o Prometheus preserva o histórico e `rate()`/`increase()` tratam os resets.
+
+### 7.6. Critérios de Aceite
+
+- [ ] `curl http://localhost:808{0..3}/actuator/prometheus`, `:8761` e `:8888` retornam métricas com a tag `application`.
+- [ ] Em `http://localhost:9090/targets`, os 6 alvos aparecem como **UP**.
+- [ ] Após `POST /api/pecas` via Gateway, a consulta `pecas_cadastro_total{resultado="sucesso"}` incrementa no Prometheus.
+- [ ] Em `http://localhost:3000`, o dashboard "Microsserviços — Visão Geral" abre já com dados, sem configuração manual.

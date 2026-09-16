@@ -15,6 +15,25 @@ for port in 8888 8761 8080 8081 8082 8083; do
 done
 sleep 1
 
+# 0. Stack de Observabilidade (Prometheus + Grafana) - opcional, requer Docker
+OBS_UP=0
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "[0/4] AVISO: Docker/Compose nao encontrado - Prometheus e Grafana NAO serao iniciados."
+elif ! docker info >/dev/null 2>&1; then
+    echo "[0/4] AVISO: o Docker esta instalado, mas este usuario nao consegue falar com o daemon."
+    echo "       Prometheus e Grafana NAO serao iniciados. Possiveis causas:"
+    echo "       - usuario fora do grupo 'docker':  sudo usermod -aG docker \"$USER\" && newgrp docker"
+    echo "       - daemon parado:                   sudo systemctl start docker"
+    echo "       Alternativa imediata: sudo docker compose -f observability/docker-compose.yml up -d"
+else
+    echo "[0/4] Iniciando Prometheus (9090) e Grafana (3000) via Docker Compose..."
+    if docker compose -f observability/docker-compose.yml up -d; then
+        OBS_UP=1
+    else
+        echo "[0/4] AVISO: falha ao subir a stack de observabilidade (veja o erro acima)."
+    fi
+fi
+
 # 1. Config Server
 echo "[1/4] Iniciando Config Server (Porta 8888)..."
 java -jar config-server/target/config-server-1.0.0-SNAPSHOT.jar > logs/config-server.log 2>&1 &
@@ -82,6 +101,12 @@ echo "Todos os serviços foram iniciados com sucesso!"
 echo "Ponto de entrada único (Gateway): http://localhost:8080"
 echo "Eureka Dashboard: http://localhost:8761"
 echo "Config Server: http://localhost:8888"
+if [ "$OBS_UP" = "1" ]; then
+    echo "Prometheus: http://localhost:9090 (targets: http://localhost:9090/targets)"
+    echo "Grafana: http://localhost:3000 (admin/admin) - dashboard 'Microsserviços — Visão Geral'"
+else
+    echo "Observabilidade: NAO iniciada (veja o aviso [0/4] acima)"
+fi
 echo "=================================================="
 
 # Manter o processo vivo aguardando os serviços
