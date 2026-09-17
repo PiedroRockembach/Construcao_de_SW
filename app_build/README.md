@@ -103,3 +103,47 @@ O projeto inclui suporte nativo a métricas via **Spring Boot Actuator** e **Mic
 - `representantes_created_total`: Contador de representantes cadastrados com sucesso.
 - `http_server_requests_seconds_count` e `_sum`: Taxa de requisições e latência média por rota e status HTTP.
 - `jvm_memory_used_bytes` / `jvm_threads_live_threads`: Métricas de saúde e recursos da JVM.
+
+---
+
+## 🧪 Testes Automatizados e Estratégia de Isolamento
+
+O projeto implementa uma suíte com **63 testes unitários e de persistência desacoplada**, cobrindo os três microsserviços de negócio (`pecas-service`, `clientes-service` e `representantes-service`) com isolamento estrito:
+
+### 1. Testes Unitários dos Serviços (`*ServiceTest`)
+- **Isolamento Total de Infraestrutura**: O banco de dados e os contadores de observabilidade são isolados com **Mockito** e registros em memória (`SimpleMeterRegistry`).
+- **Cenários Cobertos**:
+  - Criação de entidades e incremento das métricas de negócio.
+  - Conflito e exceções de regras de negócio (`ResponseStatusException(409 CONFLICT)`) para duplicidade de CPF ou código de identificação.
+  - Consulta por ID, CPF/código e busca textual parcial com verificação de `ResponseStatusException(404 NOT_FOUND)`.
+
+### 2. Testes Unitários dos Controladores Isolando o Framework Web (`*ControllerTest`)
+- **POJO Puro (Isolamento Estrito do Framework Web)**:
+  - Os controladores são instanciados diretamente via construtor Java (`new Controller(mockService)`), sem inicializar o contexto do Spring Boot, sem Tomcat/Netty e sem container de servlet.
+  - Validação direta das chamadas aos métodos, retorno de `ResponseEntity`, status HTTP (`201 CREATED`, `200 OK`) e integridade do payload retornado.
+- **Standalone MockMvc**:
+  - Testes isolados de endpoints HTTP e serialização JSON utilizando `MockMvcBuilders.standaloneSetup(controller)`, sem carga de contexto de aplicação.
+
+### 3. Código e Testes de Persistência Isolando o Framework (JPA/Hibernate) e o Banco de Dados
+- **Implementações In-Memory Fakes**:
+  - `InMemoryPecaRepository`, `InMemoryClienteRepository` e `InMemoryRepresentanteRepository`.
+  - Persistência operando puramente sobre coleções em memória (`ConcurrentHashMap`, `AtomicLong`), sem dependência de JDBC, Hibernate ou bancos de dados relacionais (mesmo H2).
+- **Testes Unitários de Persistência (`*PersistenceTest`)**:
+  - Validação das operações de persistência: geração de IDs, consultas customizadas (`findByCpf`, `findByNumeroIdentificacao`, `findByNomeContainingIgnoreCase`, `existsBy...`, `deleteById`).
+  - Teste de integração do próprio `Service` executando em conjunto com o repositório em memória, comprovando desacoplamento total da regra de negócio em relação ao mecanismo de persistência.
+
+### 🚀 Como Executar os Testes
+
+- **Executar todos os testes do ecossistema**:
+  ```bash
+  cd app_build
+  mvn test
+  ```
+
+- **Executar testes de um microsserviço individual**:
+  ```bash
+  cd app_build
+  mvn test -pl pecas-service
+  mvn test -pl clientes-service
+  mvn test -pl representantes-service
+  ```
