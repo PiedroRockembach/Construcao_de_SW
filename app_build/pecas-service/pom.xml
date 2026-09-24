@@ -57,6 +57,25 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <configuration>
+                    <targetClasses>
+                        <param>br.pucrs.construcao.pecas.service.*</param>
+                        <param>br.pucrs.construcao.pecas.controller.*</param>
+                        <param>br.pucrs.construcao.pecas.persistence.*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>br.pucrs.construcao.pecas.*Test*</param>
+                    </targetTests>
+                    <excludedClasses>
+                        <param>br.pucrs.construcao.pecas.PecasServiceApplication</param>
+                        <param>br.pucrs.construcao.pecas.config.*</param>
+                        <param>br.pucrs.construcao.pecas.dto.*</param>
+                    </excludedClasses>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

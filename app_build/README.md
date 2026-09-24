@@ -132,7 +132,7 @@ O projeto implementa uma suíte com **63 testes unitários e de persistência de
   - Validação das operações de persistência: geração de IDs, consultas customizadas (`findByCpf`, `findByNumeroIdentificacao`, `findByNomeContainingIgnoreCase`, `existsBy...`, `deleteById`).
   - Teste de integração do próprio `Service` executando em conjunto com o repositório em memória, comprovando desacoplamento total da regra de negócio em relação ao mecanismo de persistência.
 
-### 🚀 Como Executar os Testes
+### 🚀 Como Executar os Testes Unitários
 
 - **Executar todos os testes do ecossistema**:
   ```bash
@@ -147,3 +147,51 @@ O projeto implementa uma suíte com **63 testes unitários e de persistência de
   mvn test -pl clientes-service
   mvn test -pl representantes-service
   ```
+
+---
+
+## 🧬 Testes de Mutação com Pitest (Mutation Testing)
+
+Para avaliar a qualidade e a eficácia das suítes de testes unitários, o projeto conta com integração ao framework **PIT (Pitest)** e o plugin oficial para **JUnit 5**, operando sobre **Java 17**.
+
+### 🎯 Resultados e Indicadores
+- **Total de Mutantes Gerados**: **45**
+- **Mutantes Eliminados (Killed)**: **45** (**100% de Taxa de Mutação**)
+- **Mutantes Sobreviventes (Survived)**: **0**
+- **Test Strength**: **100%**
+- **Line Coverage (Classes Mutadas)**: **100%**
+
+| Microsserviço | Classes Analisadas | Mutantes Gerados | Eliminados | Sobreviventes | Score |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`pecas-service`** | `PecaService`, `PecaController` | 15 | 15 | 0 | **100%** |
+| **`clientes-service`** | `ClienteService`, `ClienteController` | 15 | 15 | 0 | **100%** |
+| **`representantes-service`** | `RepresentanteService`, `RepresentanteController` | 15 | 15 | 0 | **100%** |
+
+### 🚀 Como Executar os Testes de Mutação
+
+- **Executar em todos os microsserviços via script unificado**:
+  ```bash
+  cd app_build
+  ./run-mutation-tests.sh
+  ```
+
+- **Executar em um microsserviço específico via script**:
+  ```bash
+  cd app_build
+  ./run-mutation-tests.sh pecas-service
+  # ou clientes-service / representantes-service
+  ```
+
+- **Executar via Maven CLI**:
+  ```bash
+  cd app_build
+  mvn test-compile org.pitest:pitest-maven:mutationCoverage -pl pecas-service,clientes-service,representantes-service
+  ```
+
+### 📊 Relatórios HTML Interativos
+Após a execução, os relatórios ficam disponíveis em:
+- **Painel Geral de Mutação**: [app_build/mutation-dashboard.html](file:///home/fejunglau/Documents/PUCRS/Constru%C3%A7%C3%A3o/Construcao_de_SW/app_build/mutation-dashboard.html)
+- **`pecas-service`**: [pecas-service/target/pit-reports/index.html](file:///home/fejunglau/Documents/PUCRS/Constru%C3%A7%C3%A3o/Construcao_de_SW/app_build/pecas-service/target/pit-reports/index.html)
+- **`clientes-service`**: [clientes-service/target/pit-reports/index.html](file:///home/fejunglau/Documents/PUCRS/Constru%C3%A7%C3%A3o/Construcao_de_SW/app_build/clientes-service/target/pit-reports/index.html)
+- **`representantes-service`**: [representantes-service/target/pit-reports/index.html](file:///home/fejunglau/Documents/PUCRS/Constru%C3%A7%C3%A3o/Construcao_de_SW/app_build/representantes-service/target/pit-reports/index.html)
+
