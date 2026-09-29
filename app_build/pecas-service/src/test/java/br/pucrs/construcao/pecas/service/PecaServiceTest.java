@@ -145,6 +145,21 @@ class PecaServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+
+        assertThat(contador("pecas.consulta.nao_encontrada", null)).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("buscarPorNome deve retornar pecas mapeadas quando houver correspondencia")
+    void buscarPorNomeDeveRetornarPecasEncontradas() {
+        when(pecaRepository.findByNomeContainingIgnoreCase("Parafuso"))
+                .thenReturn(List.of(peca(1L, "PN-001", "Parafuso M8", "Sextavado")));
+
+        List<PecaResponseDTO> resposta = pecaService.buscarPorNome("Parafuso");
+
+        assertThat(resposta).hasSize(1);
+        assertThat(resposta.get(0).getNumeroIdentificacao()).isEqualTo("PN-001");
+        assertThat(resposta.get(0).getNome()).isEqualTo("Parafuso M8");
     }
 
     @Test
@@ -154,6 +169,14 @@ class PecaServiceTest {
 
         assertThat(pecaService.buscarPorNome("xyz")).isEmpty();
         verify(pecaRepository).findByNomeContainingIgnoreCase("xyz");
+    }
+
+    @Test
+    @DisplayName("gauge de registros deve refletir a contagem do repositorio")
+    void gaugeDeveRefletirContagemDoRepositorio() {
+        when(pecaRepository.count()).thenReturn(5L);
+        double valorGauge = meterRegistry.get("pecas.registros").gauge().value();
+        assertThat(valorGauge).isEqualTo(5.0);
     }
 
     private double contador(String nome, String resultado) {

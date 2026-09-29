@@ -9,6 +9,7 @@ O ecossistema implementa rigorosamente os padrões solicitados:
 - **API Gateway**: Spring Cloud Gateway como único ponto de entrada para clientes e frontend, com roteamento dinâmico baseado no Eureka, balanceamento de carga e configuração CORS.
 - **Frontend / Client Testing**: Interface Web SPA intuitiva servida pelo próprio Gateway (ou acessível via navegador) e coleção Postman para testes integrados direcionados exclusivamente ao Gateway (`http://localhost:8080`).
 - **Observabilidade (Métricas)** *(Ciclo 2)*: todos os módulos expõem métricas via **Micrometer + Spring Boot Actuator** no formato Prometheus; um container **Prometheus** coleta (scrape) essas métricas e um container **Grafana** as visualiza em dashboards provisionados automaticamente. Detalhes na **Seção 7**.
+- **Testes de Mutação com PITest** *(Ciclo 3)*: avaliação rigorosa da qualidade e sensibilidade da suíte de testes unitários através da injeção deliberada de mutantes sintáticos de bytecode utilizando **PITest** e **pitest-junit5-plugin**. Estabelecimento de quality gate de cobertura de mutação e enriquecimento dos testes para matar mutantes sobreviventes nos serviços de domínio. Detalhes na **Seção 8**.
 
 ---
 
@@ -301,3 +302,194 @@ app_build/
 - [ ] Em `http://localhost:9090/targets`, os 6 alvos aparecem como **UP**.
 - [ ] Após `POST /api/pecas` via Gateway, a consulta `pecas_cadastro_total{resultado="sucesso"}` incrementa no Prometheus.
 - [ ] Em `http://localhost:3000`, o dashboard "Microsserviços — Visão Geral" abre já com dados, sem configuração manual.
+
+---
+
+## 8. Testes de Mutação: Validação da Eficácia dos Testes com PITest (Ciclo 3)
+
+### 8.1. Contexto e Motivação
+A cobertura tradicional de código (line coverage e branch coverage medida por ferramentas como JaCoCo) indica quais linhas foram executadas durante os testes, mas **não garante** que os testes realmente verificam o comportamento correto do sistema ou que detectariam um defeito introduzido no código.
+
+O **Teste de Mutação** avalia a eficácia real da suíte de testes gerando variações sintáticas deliberadas no bytecode da aplicação ("mutantes"). Se a suíte de testes falhar após a introdução de uma mutação, diz-se que o mutante foi **morto (Killed)** — indicando que os testes são sensíveis a regressões naquele ponto. Se a suíte continuar passando sem falhas, o mutante **sobreviveu (Survived)**, revelando lacunas ou asserções fracas nos testes.
+
+A ferramenta adotada é o **PITest (PIT)**, padrão de facto para análise de mutação na plataforma Java, operando diretamente em bytecode de forma rápida e eficiente.
+
+---
+
+### 8.2. Requisitos Funcionais
+
+- **RF24 - Integração do PITest Maven Plugin**:
+  - Configuração do plugin `pitest-maven` (versão `1.15.8` ou compatível) no gerenciamento de plugins do POM raiz (`microservicos-parent`) e ativação nos microsserviços de negócio: `pecas-service`, `clientes-service` e `representantes-service`.
+  - Inclusão do plugin de extensão `pitest-junit5-plugin` (versão `1.2.1`) como dependência do `pitest-maven` para suporte completo ao mecanismo de testes JUnit Jupiter / JUnit 5.
+
+- **RF25 - Delimitação do Escopo de Mutação (Target Classes & Target Tests)**:
+  - **Classes Alvo (`targetClasses`)**: Foco primordial na camada de serviços de domínio onde reside a lógica de negócios e orquestração de persistência/métricas:
+    - `br.pucrs.construcao.pecas.service.*`
+    - `br.pucrs.construcao.clientes.service.*`
+    - `br.pucrs.construcao.representantes.service.*`
+  - **Testes Alvo (`targetTests`)**: Testes unitários puros baseados em Mockito e JUnit 5 (`*ServiceTest`), evitando bootstrap lento do contexto Spring e garantindo que a execução da mutação ocorra em poucos segundos:
+    - `br.pucrs.construcao.pecas.service.*ServiceTest`
+    - `br.pucrs.construcao.clientes.service.*ServiceTest`
+    - `br.pucrs.construcao.representantes.service.*ServiceTest`
+
+- **RF26 - Configuração de Operadores de Mutação (Mutators)**:
+  - Utilização do conjunto padrão e estendido de mutadores do PITest (`DEFAULTS` / `STRONGER`), abrangendo:
+    - **Conditionals Boundary Mutator**: Substituição de `<=` por `<`, `>=` por `>`, etc.
+    - **Invert Negatives Mutator**: Inversão de negações e condicionais lógicas.
+    - **Math Mutator**: Troca de operadores matemáticos (`+` por `-`, `*` por `/`).
+    - **Void Method Calls Mutator**: Remoção de chamadas a métodos que retornam void (ex.: chamadas a `repository.delete()`, incremento de métricas Micrometer).
+    - **Empty Returns Mutator**: Retorno de strings ou coleções vazias.
+    - **False Returns Mutator**: Substituição de retorno booleano por `false`.
+    - **True Returns Mutator**: Substituição de retorno booleano por `true`.
+    - **Null Returns Mutator**: Substituição do retorno de referências a objetos por `null`.
+    - **Primitive Returns Mutator**: Substituição do retorno numérico por `0`.
+
+- **RF27 - Relatórios HTML e XML Determinísticos**:
+  - Geração de relatórios com `timestampedReports=false`, mantendo os arquivos no caminho previsível `target/pit-reports/index.html`.
+  - Formato de saída em `HTML` (para análise humana detalhada linha a linha) e `XML` (para potencial integração com CI/CD e ferramentas de métricas).
+
+- **RF28 - Eliminação de Mutantes Sobreviventes (Refinamento de Testes)**:
+  - Análise dos mutantes gerados para cada classe de serviço.
+  - Implementação de novos casos de teste ou aprimoramento das asserções existentes para garantir que comportamentos críticos (lançamento de exceções específicas como `DuplicateResourceException`, validação de retornos `Optional`, verificação de interação com repositórios e incremento de métricas) matem mutantes sobreviventes.
+
+- **RF29 - Scripts de Automação de Execução**:
+  - Disponibilização de scripts de execução facilitada (`run-mutation-tests.bat` e `run-mutation-tests.sh`) permitindo rodar a análise de mutação em um serviço específico ou em todos os serviços sequencialmente.
+
+---
+
+### 8.3. Requisitos Não-Funcionais
+
+- **Compatibilidade de Ambiente**: O plugin deve rodar harmoniosamente em JDK 17 e JDK 21 sem conflitos de ByteBuddy ou Mockito, configurando JVM args caso necessário (`-XX:+EnableDynamicAgentLoading`).
+- **Desempenho**: Execução multithreaded (`threads=4`) e isolamento dos testes em nível unitário para manter o tempo total de execução inferior a 60 segundos por módulo.
+- **Metas de Qualidade (Quality Gates)**:
+  - **Mutation Score (Cobertura de Mutação)**: Mínimo de **80%** de mutantes mortos na camada de serviço.
+  - **Test Strength**: Mínimo de **85%** dos mutantes cobertos mortos pelos testes.
+  - **Line Coverage em Serviços**: Mínimo de **85%**.
+- **Independência do Ciclo de Build Padrão**: O comando tradicional `mvn test` continua executando apenas os testes regulares rapidamente. Os testes de mutação são invocados sob demanda via goal explícito (`mvn pitest:mutationCoverage`) ou profile dedicado.
+
+---
+
+### 8.4. Arquitetura e Ciclo de Execução da Mutação
+
+```
+  +-------------------------------------------------------------------------+
+  |                           Código Fonte Java                             |
+  |             (PecaService, ClienteService, RepresentanteService)         |
+  +-------------------------------------------------------------------------+
+                                      |
+                               mvn test-compile
+                                      v
+  +-------------------------------------------------------------------------+
+  |                               Bytecode (.class)                         |
+  +-------------------------------------------------------------------------+
+                                      |
+                           PITest Bytecode Mutator
+                                      v
+     [ Mutante 1 ]              [ Mutante 2 ]              [ Mutante N ]
+   (Condição Invertida)      (Chamada Void Removida)      (Retorno Null)
+          |                          |                          |
+          v                          v                          v
+  +-------------------------------------------------------------------------+
+  |                    Execução da Suíte de Testes Unitários                |
+  |                  (PecaServiceTest, ClienteServiceTest, ...)             |
+  +-------------------------------------------------------------------------+
+          |                          |                          |
+       Falhou?                    Falhou?                    Falhou?
+      /       \                  /       \                  /       \
+   SIM         NÃO            SIM         NÃO            SIM         NÃO
+    |           |              |           |              |           |
+    v           v              v           v              v           v
+  KILLED     SURVIVED        KILLED     SURVIVED        KILLED     SURVIVED
+  (Verde)   (Alerta!)       (Verde)    (Alerta!)       (Verde)    (Alerta!)
+                                      |
+                                      v
+  +-------------------------------------------------------------------------+
+  |                        Relatório de Cobertura PITest                    |
+  |                        target/pit-reports/index.html                    |
+  |            - Mutation Coverage (%)   - Test Strength (%)                |
+  +-------------------------------------------------------------------------+
+```
+
+---
+
+### 8.5. Especificação Técnica de Configuração Maven
+
+#### 8.5.1. No POM Raiz (`app_build/pom.xml`)
+Definição no `<pluginManagement>`:
+```xml
+<properties>
+    ...
+    <pitest.version>1.15.8</pitest.version>
+    <pitest-junit5.version>1.2.1</pitest-junit5.version>
+</properties>
+
+<build>
+    <pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${pitest.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${pitest-junit5.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <outputFormats>
+                        <outputFormat>HTML</outputFormat>
+                        <outputFormat>XML</outputFormat>
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                    <threads>4</threads>
+                    <jvmArgs>
+                        <jvmArg>-XX:+EnableDynamicAgentLoading</jvmArg>
+                    </jvmArgs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </pluginManagement>
+</build>
+```
+
+#### 8.5.2. Nos Módulos de Domínio (`pecas-service`, `clientes-service`, `representantes-service`)
+Inclusão do plugin com escopo específico:
+```xml
+<plugin>
+    <groupId>org.pitest</groupId>
+    <artifactId>pitest-maven</artifactId>
+    <configuration>
+        <targetClasses>
+            <param>br.pucrs.construcao.pecas.service.*</param>
+        </targetClasses>
+        <targetTests>
+            <param>br.pucrs.construcao.pecas.service.*Test</param>
+        </targetTests>
+        <mutationThreshold>80</mutationThreshold>
+    </configuration>
+</plugin>
+```
+
+---
+
+### 8.6. Mapeamento de Casos e Refinamento de Testes por Microsserviço
+
+| Serviço | Classe Alvo | Áreas Críticas de Mutação | Ações de Refinamento nos Testes |
+| :--- | :--- | :--- | :--- |
+| `pecas-service` | `PecaService` | - Verificação de número duplicado (`existsByNumeroIdentificacao`)<br>- Lançamento de `DuplicateResourceException`<br>- Mapeamento DTO <-> Entidade<br>- Incremento de métricas Micrometer (sucesso/conflito) | Garantir asserções nos campos do DTO retornado, verificar que exceção é lançada com mensagem correta e verificar interações com `MeterRegistry`. |
+| `clientes-service` | `ClienteService` | - Verificação de CPF duplicado (`existsByCpf`)<br>- Formatação/validação do CPF<br>- Lançamento de `DuplicateResourceException`<br>- Busca por nome parcial / vazio | Validar branch de conflito, retorno vazio quando não encontrado e asserções nos dados cadastrados. |
+| `representantes-service` | `RepresentanteService` | - Verificação de CPF duplicado (`existsByCpf`)<br>- Mapeamento de campos (`nome`, `cpf`)<br>- Consulta por CPF não encontrado (retorno vazio/404)<br>- Registro de contadores de negócio | Validar cenários de sucesso e falha, confirmação de busca filtrada e asserções completas dos atributos. |
+
+---
+
+### 8.7. Critérios de Aceite
+
+- [ ] Plugin `pitest-maven` e `pitest-junit5-plugin` configurados no `pom.xml` pai e nos serviços de domínio (`pecas-service`, `clientes-service`, `representantes-service`).
+- [ ] O comando de mutação `mvn test-compile pitest:mutationCoverage` executa com sucesso em cada serviço de negócio.
+- [ ] Relatórios em formato HTML são gerados em `target/pit-reports/index.html` em cada módulo.
+- [ ] A cobertura de mutação (Mutation Coverage) atinge no mínimo **80%** nas classes de serviço testadas.
+- [ ] Todos os testes unitários continuam passando com sucesso (`BUILD SUCCESS`).
+- [ ] Documentação de uso e relatórios gerados consolidados para o usuário.
+

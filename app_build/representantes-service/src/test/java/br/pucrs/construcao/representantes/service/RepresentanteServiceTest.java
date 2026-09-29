@@ -148,6 +148,21 @@ class RepresentanteServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+
+        assertThat(contador("representantes.consulta.nao_encontrada", null)).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("buscarPorNome deve retornar representantes mapeados quando houver correspondencia")
+    void buscarPorNomeDeveRetornarRepresentantesEncontrados() {
+        when(representanteRepository.findByNomeContainingIgnoreCase("Silva"))
+                .thenReturn(List.of(representante(1L, "12345678901", "Maria Silva")));
+
+        List<RepresentanteResponseDTO> resposta = representanteService.buscarPorNome("Silva");
+
+        assertThat(resposta).hasSize(1);
+        assertThat(resposta.get(0).getCpf()).isEqualTo("12345678901");
+        assertThat(resposta.get(0).getNome()).isEqualTo("Maria Silva");
     }
 
     @Test
@@ -157,6 +172,14 @@ class RepresentanteServiceTest {
 
         assertThat(representanteService.buscarPorNome("  ana  ")).isEmpty();
         verify(representanteRepository).findByNomeContainingIgnoreCase("ana");
+    }
+
+    @Test
+    @DisplayName("gauge de registros deve refletir a contagem do repositorio")
+    void gaugeDeveRefletirContagemDoRepositorio() {
+        when(representanteRepository.count()).thenReturn(4L);
+        double valorGauge = meterRegistry.get("representantes.registros").gauge().value();
+        assertThat(valorGauge).isEqualTo(4.0);
     }
 
     private double contador(String nome, String resultado) {

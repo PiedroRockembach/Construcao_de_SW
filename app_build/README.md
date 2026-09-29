@@ -98,6 +98,56 @@ mvn -pl clientes-service test # apenas um serviço
 
 ---
 
+## 🧬 Testes de Mutação com PITest (Ciclo 3)
+
+Os três microsserviços de domínio contam com testes de mutação gerenciados pelo plugin **PITest** (`pitest-maven` 1.15.8 + `pitest-junit5-plugin` 1.2.1).
+
+Os testes de mutação injetam falhas sintáticas deliberadas no bytecode das classes de serviço (`*.service.*`) e verificam se os testes unitários (`*ServiceTest`) falham ao detectar a mutação (matando o mutante).
+
+### Executar Testes de Mutação
+
+Utilize os scripts facilitadores na pasta `app_build`:
+- **Windows**:
+  ```cmd
+  cd app_build
+  run-mutation-tests.bat                  # Executa em todos os 3 serviços
+  run-mutation-tests.bat pecas-service    # Executa apenas no pecas-service
+  ```
+- **Linux / macOS / Git Bash**:
+  ```bash
+  cd app_build
+  ./run-mutation-tests.sh                 # Executa em todos os 3 serviços
+  ./run-mutation-tests.sh pecas-service   # Executa apenas no pecas-service
+  ```
+
+Ou diretamente via Maven:
+```bash
+cd app_build/pecas-service
+mvn test-compile pitest:mutationCoverage
+
+cd ../clientes-service
+mvn test-compile pitest:mutationCoverage
+
+cd ../representantes-service
+mvn test-compile pitest:mutationCoverage
+```
+
+### Relatórios HTML de Mutação
+
+Os relatórios detalhados linha a linha são gerados automaticamente com caminho fixo em:
+- `app_build/pecas-service/target/pit-reports/index.html`
+- `app_build/clientes-service/target/pit-reports/index.html`
+- `app_build/representantes-service/target/pit-reports/index.html`
+
+### Metas e Resultados Atingidos (Quality Gate)
+- **Threshold Configurado**: Mínimo de 80% de Mutation Score.
+- **Resultado Atual**:
+  - `pecas-service`: **100%** de mutantes mortos (13/13) | **100%** Test Strength | **100%** Line Coverage
+  - `clientes-service`: **100%** de mutantes mortos (13/13) | **100%** Test Strength | **100%** Line Coverage
+  - `representantes-service`: **100%** de mutantes mortos (13/13) | **100%** Test Strength | **100%** Line Coverage
+
+---
+
 ## 📊 Observabilidade (Métricas: Micrometer + Prometheus + Grafana)
 
 Todos os módulos expõem métricas em `/actuator/prometheus` (tag comum `application`). O `start-all.sh` sobe automaticamente
