@@ -1,0 +1,18 @@
+# Perfil de testes: isola a aplicacao da infraestrutura externa
+# (Config Server e Eureka) para que as fatias de teste subam sozinhas.
+spring:
+  application:
+    name: clientes-service
+  cloud:
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+  config:
+    import: ""
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false

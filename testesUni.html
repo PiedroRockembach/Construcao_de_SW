@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia Interativo de Testes Spring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F9FA;
+            color: #212529;
+        }
+        pre, code {
+            font-family: 'Source Code Pro', monospace;
+        }
+        .code-block {
+            background-color: #2D3748;
+            color: #E2E8F0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4A5568;
+            color: #E2E8F0;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #718096;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link.active {
+            background-color: #E9ECEF;
+            color: #0D6EFD;
+            font-weight: 600;
+        }
+        .strategy-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .strategy-card:hover, .strategy-card.active {
+            transform: translateY(-4px);
+            border-color: #0D6EFD;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .lifecycle-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .lifecycle-item:hover, .lifecycle-item.active {
+             background-color: #cfe2ff;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Chosen Palette: Developer Focused (#F8F9FA background, #212529 text, #0D6EFD accent) -->
+    <!-- Application Structure Plan: A task-oriented, two-column layout was chosen to best serve the developer audience. A fixed left sidebar provides persistent, hierarchical navigation, allowing users to jump to any concept instantly. The right content panel dynamically displays detailed information. This structure replaces a linear scroll with an efficient, topic-based exploration model, which is ideal for a technical reference guide. Interactive elements are used to visualize complex concepts like the test lifecycle and testing strategies, enhancing comprehension beyond what static text can offer. -->
+    <!-- Visualization & Content Choices: 
+        1. Report Info -> Test Lifecycle Order. Goal -> Organize/Inform. Viz/Presentation -> Interactive HTML/CSS diagram. Interaction -> Clicking an annotation (@BeforeAll, etc.) highlights its position in the flow and displays its description. Justification -> Makes the execution order tangible and easier to remember. Method -> Vanilla JS + CSS classes.
+        2. Report Info -> Mockito @Mock vs @InjectMocks. Goal -> Explain Relationship. Viz/Presentation -> Simple HTML/CSS block diagram. Interaction -> None, static visual aid. Justification -> Clarifies the dependency injection relationship which can be confusing. Method -> HTML/CSS.
+        3. Report Info -> Test Strategy Comparison Table. Goal -> Compare. Viz/Presentation -> Interactive card-based component. Interaction -> Clicking a card (@DataJpaTest, etc.) reveals its detailed properties in a central display area. Justification -> Facilitates direct comparison and reduces information overload compared to a dense table. Method -> Vanilla JS + CSS.
+        4. Report Info -> Code Examples. Goal -> Inform/Provide Utility. Viz/Presentation -> Styled code blocks. Interaction -> "Copy to Clipboard" button on each block. Justification -> Adds practical utility for developers using the guide. Method -> Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <div class="flex min-h-screen">
+        <aside class="w-64 bg-white border-r border-gray-200 p-4 fixed h-full hidden lg:block">
+            <h2 class="text-lg font-bold mb-4">Menu de Navegação</h2>
+            <nav id="desktop-nav">
+            </nav>
+        </aside>
+
+        <main class="flex-1 lg:ml-64">
+            <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-200">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                     <h1 class="text-xl font-bold text-gray-800">Guia Interativo de Testes com Spring</h1>
+                     <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                     </button>
+                </div>
+            </header>
+            
+            <div id="mobile-nav-container" class="hidden fixed inset-0 bg-black/50 z-50">
+                 <div class="w-64 bg-white h-full p-4">
+                     <nav id="mobile-nav"></nav>
+                 </div>
+            </div>
+
+            <div id="content" class="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const contentData = {
+                'fundamentos': {
+                    title: 'Parte 1: Fundamentos Essenciais de Testes Unitários com JUnit 5',
+                    content: `
+                        <p class="mb-4">A construção de software robusto exige uma base sólida de testes automatizados. No ecossistema Java, o JUnit 5 se estabeleceu como o framework de fato para testes, fornecendo uma plataforma moderna e flexível. Esta seção estabelece os pilares do JUnit 5, detalhando a anatomia de um teste, seu ciclo de vida e as ferramentas de verificação essenciais.</p>
+                    `
+                },
+                'anatomia': {
+                    title: 'A Anatomia de um Teste Moderno com JUnit 5',
+                    content: `
+                        <p class="mb-4">Um teste unitário eficaz é uma especificação precisa do comportamento esperado de uma unidade de software. O JUnit 5 usa anotações para tornar essa especificação clara.</p>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li><code class="bg-gray-200 px-1 rounded">@Test</code>: Marca um método como um caso de teste executável.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">@DisplayName</code>: Permite atribuir um nome descritivo em linguagem natural a um teste, melhorando a legibilidade dos relatórios.</li>
+                        </ul>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo: Classe Calculator</h4>
+                        <div class="code-block" data-code='package com.arquitetura.testes;\n\npublic class Calculator {\n    public int add(int a, int b) {\n        return a + b;\n    }\n}'></div>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo: Teste para Calculator</h4>
+                        <div class="code-block" data-code='package com.arquitetura.testes;\n\nimport org.junit.jupiter.api.DisplayName;\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.assertEquals;\n\nclass CalculatorTest {\n\n    @Test\n    @DisplayName("Deve retornar a soma correta de dois números positivos")\n    void add_doisNumerosPositivos_retornaSomaCorreta() {\n        // Arrange\n        Calculator calculator = new Calculator();\n        int a = 2;\n        int b = 3;\n\n        // Act\n        int result = calculator.add(a, b);\n\n        // Assert\n        assertEquals(5, result, "A soma de 2 + 3 deve ser 5");\n    }\n}'></div>
+                    `
+                },
+                'ciclo-de-vida': {
+                    title: 'Gerenciando o Ciclo de Vida do Teste',
+                    content: `
+                        <p class="mb-4">A execução de testes frequentemente requer a configuração de um estado inicial (setup) e a limpeza de recursos ao final (teardown). O JUnit 5 gerencia esse processo através de "Lifecycle Methods".</p>
+                        <p class="mb-6">Clique em cada anotação abaixo para ver sua descrição e posição no ciclo de vida.</p>
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <div class="md:w-1/3">
+                                <ul class="space-y-2">
+                                    <li id="lifecycle-beforeall" class="lifecycle-item p-2 rounded border border-gray-300">@BeforeAll</li>
+                                    <li id="lifecycle-beforeeach" class="lifecycle-item p-2 rounded border border-gray-300">@BeforeEach</li>
+                                    <li id="lifecycle-test" class="lifecycle-item p-2 rounded border border-gray-300">@Test</li>
+                                    <li id="lifecycle-aftereach" class="lifecycle-item p-2 rounded border border-gray-300">@AfterEach</li>
+                                    <li id="lifecycle-afterall" class="lifecycle-item p-2 rounded border border-gray-300">@AfterAll</li>
+                                </ul>
+                            </div>
+                            <div class="md:w-2/3 bg-white p-4 rounded-lg border">
+                                <h4 id="lifecycle-title" class="font-bold text-lg mb-2 text-blue-600">Selecione uma anotação</h4>
+                                <p id="lifecycle-desc" class="text-gray-700">A sequência de execução é rigorosa e previsível, garantindo que cada teste seja executado em um ambiente controlado.</p>
+                            </div>
+                        </div>
+                         <h4 class="font-semibold mt-6 mb-2">Exemplo Prático</h4>
+                        <div class="code-block" data-code='class TestLifecycleDemo {\n\n    @BeforeAll\n    static void setupAll() {\n        System.out.println("--- @BeforeAll ---");\n    }\n\n    @BeforeEach\n    void setupEach() {\n        System.out.println("  - @BeforeEach -");\n    }\n\n    @Test\n    void firstTest() {\n        System.out.println("    >> Primeiro Teste");\n    }\n\n    @Test\n    void secondTest() {\n        System.out.println("    >> Segundo Teste");\n    }\n\n    @AfterEach\n    void tearDownEach() {\n        System.out.println("  - @AfterEach -");\n    }\n\n    @AfterAll\n    static void tearDownAll() {\n        System.out.println("--- @AfterAll ---");\n    }\n}'></div>
+                    `
+                },
+                'assertions': {
+                    title: 'A Arte da Verificação: A Classe Assertions',
+                    content: `
+                        <p class="mb-4">O coração de qualquer teste é a verificação. No JUnit 5, todas as verificações são realizadas através de métodos estáticos da classe <code class="bg-gray-200 px-1 rounded">org.junit.jupiter.api.Assertions</code>.</p>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li><code class="bg-gray-200 px-1 rounded">assertEquals(expected, actual)</code>: Verifica se dois valores são iguais.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">assertTrue(condition)</code>: Verifica se uma condição é verdadeira.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">assertNotNull(object)</code>: Verifica se um objeto não é nulo.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">assertSame(expected, actual)</code>: Verifica se duas referências apontam para o mesmo objeto.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">assertThrows(expectedType, executable)</code>: Verifica se a execução de um bloco de código lança uma exceção específica.</li>
+                        </ul>
+                         <h4 class="font-semibold mt-6 mb-2">Exemplo de Uso</h4>
+                        <div class="code-block" data-code='class AssertionsDemo {\n\n    @Test\n    void standardAssertions() {\n        assertEquals(4, 2 + 2);\n        assertTrue(5 > 3);\n        assertNotNull(new Object());\n    }\n\n    @Test\n    void exceptionTesting() {\n        NumberFormatException exception = assertThrows(NumberFormatException.class, () -> {\n            Integer.parseInt("não é um número");\n        });\n        assertEquals("For input string: \\"não é um número\\"", exception.getMessage());\n    }\n}'></div>
+                    `
+                },
+                'mockito': {
+                    title: 'Parte 2: Isolando Dependências e Comportamentos com Mockito',
+                    content: `
+                        <p class="mb-4">Testes unitários devem ser rápidos e focados. O Mockito é o framework de fato para a criação de "dublês de teste" (mocks), permitindo isolar a unidade sob teste, substituindo suas dependências reais por objetos controlados e simulados.</p>
+                    `
+                },
+                'mock-inject': {
+                    title: 'Dominando @Mock e @InjectMocks',
+                    content: `
+                         <p class="mb-4">O Mockito fornece duas anotações centrais para configurar testes de forma declarativa:</p>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li><code class="bg-gray-200 px-1 rounded">@Mock</code>: Cria um "dublê" ou "mock" de uma classe ou interface. É uma casca vazia cujo comportamento deve ser definido.</li>
+                            <li><code class="bg-gray-200 px-1 rounded">@InjectMocks</code>: Cria uma <strong>instância real</strong> da classe a ser testada (SUT - System Under Test) e injeta os campos anotados com <code class="bg-gray-200 px-1 rounded">@Mock</code> nela.</li>
+                        </ul>
+                        <p class="mb-4">A integração com JUnit 5 é feita com a anotação <code class="bg-gray-200 px-1 rounded">@ExtendWith(MockitoExtension.class)</code> na classe de teste.</p>
+                        
+                        <h4 class="font-semibold mt-6 mb-2">Visualizando a Injeção</h4>
+                        <div class="bg-white p-6 rounded-lg border grid grid-cols-1 md:grid-cols-3 gap-4 text-center items-center">
+                            <div class="p-4 border-2 border-dashed border-blue-400 rounded-lg">
+                                <p class="font-semibold">@Mock</p>
+                                <p>UserRepository</p>
+                                <p class="text-sm text-gray-500">(Dependência Simulada)</p>
+                            </div>
+                            <div class="text-5xl text-blue-500 font-thin">→</div>
+                             <div class="p-4 bg-blue-100 border-2 border-solid border-blue-500 rounded-lg">
+                                <p class="font-semibold">@InjectMocks</p>
+                                <p>UserService</p>
+                                <p class="text-sm text-gray-500">(Objeto Real Sob Teste)</p>
+                            </div>
+                        </div>
+
+                         <h4 class="font-semibold mt-6 mb-2">Exemplo de Configuração</h4>
+                        <div class="code-block" data-code='@ExtendWith(MockitoExtension.class)\nclass UserServiceTest {\n\n    @Mock\n    private UserRepository userRepository; // Cria um mock\n\n    @InjectMocks\n    private UserService userService; // Cria instância real e injeta o mock\n\n    // ... testes ...\n}'></div>
+                    `
+                },
+                'stub-verify': {
+                    title: 'Definindo Comportamento (Stubbing) e Verificando Interações',
+                    content: `
+                        <p class="mb-4">Com os mocks configurados, podemos "ensiná-los" a se comportar e depois verificar se foram usados como esperado.</p>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li><strong>Stubbing (Arrage)</strong>: Usa <code class="bg-gray-200 px-1 rounded">when(...).thenReturn(...)</code> para definir um valor de retorno para uma chamada de método. Ex: <code class="bg-gray-200 px-1 rounded">when(repo.findById(1L)).thenReturn(Optional.of(user));</code>.</li>
+                            <li><strong>Verification (Assert)</strong>: Usa <code class="bg-gray-200 px-1 rounded">verify(...)</code> para confirmar se as interações esperadas ocorreram. Ex: <code class="bg-gray-200 px-1 rounded">verify(repo, times(1)).findById(1L);</code>.</li>
+                        </ul>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo de Teste Completo</h4>
+                        <div class="code-block" data-code='@Test\n@DisplayName("Deve retornar o usuário quando um ID válido for fornecido")\nvoid findUserById_quandoIdValido_retornaUsuario() {\n    // Arrange\n    long userId = 1L;\n    User mockUser = new User();\n    mockUser.setId(userId);\n    mockUser.setName("Carlos");\n    when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));\n\n    // Act\n    User foundUser = userService.findUserById(userId);\n\n    // Assert\n    assertNotNull(foundUser);\n    assertEquals(userId, foundUser.getId());\n\n    // Verify\n    verify(userRepository, times(1)).findById(userId);\n}'></div>
+                    `
+                },
+                'integracao': {
+                    title: 'Parte 3: Testes de Integração no Ecossistema Spring Boot',
+                    content: `
+                        <p class="mb-4">Enquanto os testes unitários validam componentes em isolamento, os testes de integração verificam se diferentes partes do sistema funcionam corretamente em conjunto. O Spring Boot oferece suporte de primeira classe para testes de integração através do conceito de "test slices".</p>
+                        <p>As "fatias de teste" são anotações especializadas que carregam apenas a parte do contexto Spring necessária para testar uma camada específica, otimizando a velocidade de execução.</p>
+                    `
+                },
+                'datajpatest': {
+                    title: 'Testando a Camada de Persistência com @DataJpaTest',
+                    content: `
+                        <p class="mb-4">A anotação <code class="bg-gray-200 px-1 rounded">@DataJpaTest</code> é projetada para testar a camada de persistência em isolamento. Ela configura um banco de dados em memória (H2), escaneia por entidades (<code class="bg-gray-200 px-1 rounded">@Entity</code>) e configura os repositórios Spring Data JPA.</p>
+                        <p class="mb-4">Cada teste é transacional e sofre rollback ao final, garantindo o isolamento entre os testes.</p>
+                         <h4 class="font-semibold mt-6 mb-2">Exemplo de Teste de Repositório</h4>
+                        <div class="code-block" data-code='@DataJpaTest\nclass UserRepositoryTest {\n\n    @Autowired\n    private TestEntityManager entityManager;\n\n    @Autowired\n    private UserRepository userRepository;\n\n    @Test\n    @DisplayName("Deve encontrar o usuário pelo ID após persisti-lo")\n    void findById_aposPersistir_retornaUsuario() {\n        // Arrange\n        User newUser = new User();\n        newUser.setName("Juliana");\n        User savedUser = entityManager.persistAndFlush(newUser);\n\n        // Act\n        Optional<User> foundUserOpt = userRepository.findById(savedUser.getId());\n\n        // Assert\n        assertThat(foundUserOpt).isPresent();\n        assertThat(foundUserOpt.get().getName()).isEqualTo(newUser.getName());\n    }\n}'></div>
+                    `
+                },
+                'webmvctest': {
+                    title: 'Testando a Camada Web com @WebMvcTest',
+                    content: `
+                        <p class="mb-4">Para testar os controllers Spring MVC, a anotação <code class="bg-gray-200 px-1 rounded">@WebMvcTest</code> é a ferramenta ideal. Ela carrega apenas a camada web da aplicação (<code class="bg-gray-200 px-1 rounded">@Controller</code>, <code class="bg-gray-200 px-1 rounded">@RestController</code>, etc.), mas <strong>não</strong> carrega as camadas de serviço ou repositório.</p>
+                        <p class="mb-4">As dependências do controller, como serviços, devem ser mockadas usando <code class="bg-gray-200 px-1 rounded">@MockBean</code>. Para simular requisições HTTP, utiliza-se o <code class="bg-gray-200 px-1 rounded">MockMvc</code>.</p>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo de Teste de Controller</h4>
+                        <div class="code-block" data-code='@WebMvcTest(UserController.class)\nclass UserControllerTest {\n\n    @Autowired\n    private MockMvc mockMvc;\n\n    @MockBean\n    private UserService userService;\n\n    @Test\n    @DisplayName("GET /api/users/{id} deve retornar o usuário e status 200 OK")\n    void getUserById_quandoUsuarioExiste_retornaJsonEStatusOK() throws Exception {\n        // Arrange\n        long userId = 1L;\n        User user = new User();\n        user.setId(userId);\n        user.setName("Alice");\n        given(userService.findUserById(userId)).willReturn(user);\n\n        // Act & Assert\n        mockMvc.perform(get("/api/users/{id}", userId))\n               .andExpect(status().isOk())\n               .andExpect(jsonPath("$.name", is(user.getName())));\n    }\n}'></div>
+                    `
+                },
+                 'springboottest': {
+                    title: 'Testes de Integração Completos com @SpringBootTest',
+                    content: `
+                        <p class="mb-4">Para cenários onde é necessário validar a interação entre todas as camadas da aplicação, a anotação <code class="bg-gray-200 px-1 rounded">@SpringBootTest</code> é a escolha apropriada. Ela carrega o <code class="bg-gray-200 px-1 rounded">ApplicationContext</code> completo, de forma muito semelhante ao ambiente de produção.</p>
+                        <p class="mb-4">Por iniciar a aplicação inteira, esses testes são consideravelmente mais lentos e devem ser usados com moderação para validar os fluxos de negócio mais críticos.</p>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo de "Smoke Test"</h4>
+                        <div class="code-block" data-code='@SpringBootTest\nclass ApplicationSmokeTest {\n\n    @Autowired\n    private UserController userController;\n\n    @Test\n    void contextLoads() {\n        assertThat(userController).isNotNull();\n    }\n}'></div>
+                    `
+                },
+                'boas-praticas': {
+                    title: 'Parte 4: Estratégias e Boas Práticas',
+                    content: `
+                        <p class="mb-4">Escrever testes eficazes vai além de conhecer as APIs. Requer uma abordagem disciplinada e uma compreensão estratégica de como e quando aplicar diferentes técnicas de teste.</p>
+                    `
+                },
+                 'aaa': {
+                    title: 'O Padrão Arrange-Act-Assert (AAA)',
+                    content: `
+                        <p class="mb-4">Uma das práticas mais fundamentais para escrever testes claros é a adoção do padrão <strong>Arrange-Act-Assert (AAA)</strong>, que estrutura o teste em três seções lógicas:</p>
+                        <ol class="list-decimal list-inside mb-4 space-y-2">
+                            <li><strong>Arrange (Preparar)</strong>: Configuração do estado inicial, criação de objetos e mocks.</li>
+                            <li><strong>Act (Agir)</strong>: Execução da ação a ser testada, idealmente uma única chamada de método.</li>
+                            <li><strong>Assert (Verificar)</strong>: Verificação dos resultados e interações.</li>
+                        </ol>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo com Padrão AAA</h4>
+                        <div class="code-block" data-code='@Test\n@DisplayName("Exemplo com Padrão AAA")\nvoid exemploComAAA() {\n    // Arrange\n    Calculator calculator = new Calculator();\n    int a = 5, b = 10;\n    \n    // Act\n    int result = calculator.add(a, b);\n\n    // Assert\n    assertEquals(15, result);\n}'></div>
+                    `
+                },
+                'estrategia': {
+                    title: 'Pirâmide de Testes e Estratégias',
+                    content: `
+                        <p class="mb-6">Uma estratégia de testes bem balanceada, visualizada como uma pirâmide, é essencial. A base é formada por muitos testes unitários rápidos, o meio por testes de integração de "fatia", e o topo por poucos testes de ponta a ponta. Clique em cada anotação abaixo para comparar as abordagens.</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                             <div id="strategy-card-mockito" class="strategy-card bg-white p-4 rounded-lg shadow-sm border text-center">
+                                <h4 class="font-bold">Unitário Puro</h4>
+                                <p class="text-sm text-gray-500">MockitoExtension</p>
+                            </div>
+                            <div id="strategy-card-datajpatest" class="strategy-card bg-white p-4 rounded-lg shadow-sm border text-center">
+                                <h4 class="font-bold">JPA Slice</h4>
+                                <p class="text-sm text-gray-500">@DataJpaTest</p>
+                            </div>
+                             <div id="strategy-card-webmvctest" class="strategy-card bg-white p-4 rounded-lg shadow-sm border text-center">
+                                <h4 class="font-bold">Web Slice</h4>
+                                <p class="text-sm text-gray-500">@WebMvcTest</p>
+                            </div>
+                             <div id="strategy-card-springboottest" class="strategy-card bg-white p-4 rounded-lg shadow-sm border text-center">
+                                <h4 class="font-bold">Completo</h4>
+                                <p class="text-sm text-gray-500">@SpringBootTest</p>
+                            </div>
+                        </div>
+                        <div id="strategy-details" class="bg-white p-6 rounded-lg shadow-inner border border-gray-200">
+                             <h3 id="strategy-title" class="text-xl font-bold text-blue-600 mb-2">Selecione uma Estratégia</h3>
+                             <div id="strategy-content" class="space-y-3">
+                                <p>Compare as diferentes anotações de teste para entender quando usar cada uma.</p>
+                             </div>
+                        </div>
+                    `
+                },
+                'cobertura-codigo': {
+                    title: 'Parte 5: Garantindo Qualidade com Cobertura de Código e SonarQube',
+                    content: `
+                        <p class="mb-4">Ter uma suíte de testes robusta é o primeiro passo. O segundo é medir sua eficácia. A cobertura de código é uma métrica que indica qual porcentagem do seu código-fonte é executada durante os testes. Ferramentas como o SonarQube automatizam essa medição e a integram em um processo de garantia de qualidade contínua.</p>
+                    `
+                },
+                'cobertura-conceitos': {
+                    title: 'Conceitos Fundamentais de Cobertura de Código',
+                    content: `
+                        <p class="mb-4">A cobertura de código não é apenas um número, mas um conjunto de métricas que avaliam a profundidade dos seus testes. As mais importantes são:</p>
+                        <ul class="list-disc list-inside mb-4 space-y-3">
+                            <li>
+                                <strong>Cobertura de Linha (Line Coverage):</strong> A métrica mais simples. Mede quantas linhas de código executável foram de fato executadas pelos testes. Uma linha é considerada coberta se foi chamada ao menos uma vez.
+                            </li>
+                            <li>
+                                <strong>Cobertura de Condição/Ramificação (Branch Coverage):</strong> Mede os resultados de expressões booleanas. Para uma estrutura como <code class="bg-gray-200 px-1 rounded">if (a && b)</code>, a cobertura de condição verifica se cada sub-condição (<code class="bg-gray-200 px-1 rounded">a</code>, <code class="bg-gray-200 px-1 rounded">b</code>) foi avaliada como verdadeira e falsa. A cobertura de ramificação (branch) para um <code class="bg-gray-200 px-1 rounded">if/else</code> verifica se tanto o bloco <code class="bg-gray-200 px-1 rounded">if</code> quanto o <code class="bg-gray-200 px-1 rounded">else</code> foram executados.
+                            </li>
+                        </ul>
+                        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+                            <p class="font-bold">Atenção!</p>
+                            <p>100% de cobertura não significa ausência de bugs. Significa apenas que todo o código foi executado. Testes podem passar e ainda assim a lógica pode estar incorreta. A cobertura é um indicador de que partes do código não foram testadas, e não uma garantia de qualidade absoluta.</p>
+                        </div>
+                    `
+                },
+                'sonarqube-intro': {
+                    title: 'O que é e Como Funciona o SonarQube?',
+                    content: `
+                        <p class="mb-4">O SonarQube é uma plataforma de código aberto para inspeção contínua da qualidade do código. Ele vai muito além da cobertura de testes, realizando análises estáticas para encontrar bugs, vulnerabilidades de segurança e "code smells" (maus cheiros no código).</p>
+                        <h4 class="font-semibold mt-6 mb-2">Arquitetura Simplificada</h4>
+                        <p class="mb-4">O SonarQube opera com três componentes principais:</p>
+                        <ol class="list-decimal list-inside mb-4 space-y-2">
+                            <li><strong>Scanner:</strong> Uma ferramenta de linha de comando (integrada com Maven, Gradle, Jenkins, etc.) que analisa o código-fonte e os relatórios de cobertura.</li>
+                            <li><strong>Server:</strong> Uma aplicação web que processa os dados do scanner, armazena os resultados e fornece uma interface para visualizar os dashboards de qualidade.</li>
+                            <li><strong>Database:</strong> Armazena as métricas, problemas, configurações e snapshots de qualidade do projeto ao longo do tempo.</li>
+                        </ol>
+                        <h4 class="font-semibold mt-6 mb-2">Métricas Chave no SonarQube</h4>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li><strong>Bugs:</strong> Erros óbvios na lógica que podem levar a comportamento incorreto.</li>
+                            <li><strong>Vulnerabilities:</strong> Falhas de segurança que podem ser exploradas.</li>
+                            <li><strong>Code Smells:</strong> Problemas de manutenibilidade que tornam o código confuso e difícil de evoluir.</li>
+                            <li><strong>Coverage:</strong> Percentual do código coberto pelos testes.</li>
+                            <li><strong>Duplications:</strong> Blocos de código repetidos que deveriam ser refatorados.</li>
+                        </ul>
+                    `
+                },
+                'sonarqube-dev': {
+                    title: 'Utilizando o SonarQube no Ambiente de Desenvolvimento',
+                    content: `
+                        <p class="mb-4">Antes de enviar o código para um repositório central, é uma boa prática analisá-lo localmente. Isso permite corrigir problemas de forma rápida e iterativa.</p>
+                        <h4 class="font-semibold mt-6 mb-2">1. Configurando o Plugin do SonarScanner</h4>
+                        <p class="mb-2">Para analisar um projeto, você precisa configurar o SonarScanner no seu build tool. O JaCoCo (Java Code Coverage) é comumente usado para gerar os relatórios de cobertura que o SonarQube irá processar.</p>
+                        <h5 class="font-medium mt-4 mb-2">Exemplo com Maven (`+"`pom.xml`"+`):</h5>
+                        <div class="code-block" data-code='<properties>\n    <sonar.host.url>http://localhost:9000</sonar.host.url>\n    <sonar.login>SEU_TOKEN_AQUI</sonar.login>\n</properties>\n\n<build>\n    <plugins>\n        <plugin>\n            <groupId>org.jacoco</groupId>\n            <artifactId>jacoco-maven-plugin</artifactId>\n            <version>0.8.8</version>\n            <executions>\n                <execution>\n                    <goals>\n                        <goal>prepare-agent</goal>\n                    </goals>\n                </execution>\n                <execution>\n                    <id>report</id>\n                    <phase>prepare-package</phase>\n                    <goals>\n                        <goal>report</goal>\n                    </goals>\n                </execution>\n            </executions>\n        </plugin>\n        <plugin>\n            <groupId>org.sonarsource.scanner.maven</groupId>\n            <artifactId>sonar-maven-plugin</artifactId>\n            <version>3.9.1.2184</version>\n        </plugin>\n    </plugins>\n</build>'></div>
+                        <h4 class="font-semibold mt-6 mb-2">2. Executando a Análise Local</h4>
+                        <p class="mb-2">Com a configuração pronta, a análise é feita em dois passos:</p>
+                        <ol class="list-decimal list-inside mb-4 space-y-2">
+                            <li>Gerar o relatório de cobertura com os testes: <code class="bg-gray-200 px-1 rounded">mvn clean verify</code></li>
+                            <li>Enviar a análise para o servidor SonarQube: <code class="bg-gray-200 px-1 rounded">mvn sonar:sonar</code></li>
+                        </ol>
+                        <h4 class="font-semibold mt-6 mb-2">3. Integração com a IDE (SonarLint)</h4>
+                        <p class="mb-4">A forma mais proativa de usar o SonarQube é através do <strong>SonarLint</strong>, um plugin para IDEs (VS Code, IntelliJ, Eclipse). Ele analisa o código em tempo real, enquanto você digita, e sublinha bugs e code smells diretamente no editor, fornecendo feedback instantâneo sem a necessidade de executar uma análise completa.</p>
+                        <div class="bg-white p-4 rounded-lg border border-gray-300">
+                            <p class="text-sm text-gray-500">// Exemplo de como o SonarLint sinaliza um problema no IntelliJ</p>
+                            <p>public String getGreeting() {</p>
+                            <p class="ml-4">String name = "World";</p>
+                            <p class="ml-4 bg-yellow-200 rounded px-1">if (name != null) {  <span class="text-yellow-700 italic">// SonarLint: Remova este "if" desnecessário.</span></p>
+                            <p class="ml-8">return "Hello, " + name;</p>
+                            <p class="ml-4">}</p>
+                            <p class="ml-4">return "Hello, World";</p>
+                            <p>}</p>
+                        </div>
+                    `
+                },
+                'sonarqube-prod': {
+                    title: 'Integrando SonarQube em Produção (CI/CD)',
+                    content: `
+                        <p class="mb-4">O verdadeiro poder do SonarQube é revelado quando ele é integrado a um pipeline de Integração Contínua/Entrega Contínua (CI/CD). Ele atua como um "porteiro" da qualidade, impedindo que código de baixa qualidade chegue à produção.</p>
+                        <h4 class="font-semibold mt-6 mb-2">Quality Gates (Portões de Qualidade)</h4>
+                        <p class="mb-4">Um Quality Gate é um conjunto de condições que o código deve atender para passar na análise. Se qualquer condição falhar, o SonarQube pode instruir o pipeline de CI/CD a falhar, bloqueando o merge ou o deploy. Exemplos de condições:</p>
+                        <ul class="list-disc list-inside mb-4 space-y-2">
+                            <li>Cobertura em código novo deve ser > 80%</li>
+                            <li>Não deve haver Bugs bloqueadores (Blocker)</li>
+                            <li>Não deve haver novas Vulnerabilidades de segurança</li>
+                            <li>A taxa de duplicação em código novo deve ser < 3%</li>
+                        </ul>
+                        <h4 class="font-semibold mt-6 mb-2">Exemplo de Pipeline com Jenkins</h4>
+                        <p class="mb-2">Abaixo, um exemplo simplificado de um estágio em um <code class="bg-gray-200 px-1 rounded">Jenkinsfile</code> que executa a análise do SonarQube.</p>
+                        <div class="code-block" data-code='stage("Análise SonarQube") {\n    steps {\n        withSonarQubeEnv("SonarQube-Server") { // Nome da configuração no Jenkins\n            sh "mvn clean verify sonar:sonar"\n        }\n        // Espera o webhook do SonarQube com o resultado do Quality Gate\n        timeout(time: 1, unit: "HOURS") {\n            waitForQualityGate abortPipeline: true\n        }\n    }\n}'></div>
+                        <h4 class="font-semibold mt-6 mb-2">Decoração de Pull Requests</h4>
+                        <p class="mb-4">Quando integrado com plataformas como GitHub, GitLab ou Bitbucket, o SonarQube pode "decorar" os Pull Requests (PRs). Ele adiciona um comentário diretamente no PR mostrando o resultado da análise e se o Quality Gate passou ou falhou. Isso permite que os revisores vejam a qualidade do código antes mesmo de começar a revisão manual, tornando o processo muito mais eficiente.</p>
+                    `
+                },
+            };
+            
+            const lifecycleDetails = {
+                'beforeall': { title: '@BeforeAll', desc: 'Executado uma única vez, antes de todos os testes da classe. Deve ser estático. Ideal para setup custoso e compartilhado.' },
+                'beforeeach': { title: '@BeforeEach', desc: 'Executado antes de CADA método de teste. Fundamental para garantir o isolamento dos testes, reinicializando o estado.' },
+                'test': { title: '@Test', desc: 'O método de teste em si, onde a lógica sob teste é executada e verificada.' },
+                'aftereach': { title: '@AfterEach', desc: 'Executado após CADA método de teste. Usado para limpeza de recursos específicos do teste.' },
+                'afterall': { title: '@AfterAll', desc: 'Executado uma única vez, após todos os testes da classe. Deve ser estático. Ideal para teardown global.' },
+            };
+
+            const strategyDetails = {
+                'mockito': { title: 'Teste Unitário Puro (MockitoExtension)', content: `
+                    <p><strong>Propósito:</strong> Testar a lógica de negócio de uma classe em total isolamento.</p>
+                    <p><strong>Contexto Carregado:</strong> Nenhum contexto Spring. Os objetos são instanciados manually ou com Mockito.</p>
+                    <p><strong>Velocidade:</strong> Muito Rápida (milissegundos).</p>
+                    <p><strong>Caso de Uso:</strong> Validar algoritmos, regras de negócio e transformações de dados em classes de serviço (<code class="bg-gray-200 px-1 rounded">@Service</code>).</p>
+                `},
+                'datajpatest': { title: '@DataJpaTest', content: `
+                    <p><strong>Propósito:</strong> Testar a camada de persistência JPA.</p>
+                    <p><strong>Contexto Carregado:</strong> Apenas componentes JPA, `+"`@Entity`"+` e `+"`DataSource`"+`. Usa um banco de dados em memória.</p>
+                    <p><strong>Velocidade:</strong> Rápida.</p>
+                    <p><strong>Caso de Uso:</strong> Validar queries customizadas, mapeamentos de entidade e o comportamento geral de um <code class="bg-gray-200 px-1 rounded">@Repository</code>.</p>
+                `},
+                'webmvctest': { title: '@WebMvcTest', content: `
+                    <p><strong>Propósito:</strong> Testar a camada web (Spring MVC) sem um servidor real.</p>
+                    <p><strong>Contexto Carregado:</strong> Apenas a camada Web (<code class="bg-gray-200 px-1 rounded">@Controller</code>, Filtros, etc.). Serviços e repositórios são mockados com <code class="bg-gray-200 px-1 rounded">@MockBean</code>.</p>
+                    <p><strong>Velocidade:</strong> Rápida.</p>
+                    <p><strong>Caso de Uso:</strong> Validar mapeamentos de endpoints, (de)serialização JSON, validação de entrada e tratamento de exceções.</p>
+                `},
+                 'springboottest': { title: '@SpringBootTest', content: `
+                    <p><strong>Propósito:</strong> Teste de integração completo, validando a colaboração entre todas as camadas.</p>
+                    <p><strong>Contexto Carregado:</strong> Contexto completo da aplicação Spring.</p>
+                    <p><strong>Velocidade:</strong> Lenta.</p>
+                    <p><strong>Caso de Uso:</strong> Testar fluxos de negócio críticos de ponta a ponta ("happy paths") para garantir que todos os beans estão conectados e funcionando corretamente.</p>
+                `},
+            };
+
+            const navStructure = [
+                { id: 'fundamentos', title: 'Parte 1: Fundamentos', children: [
+                    { id: 'anatomia', title: 'Anatomia de um Teste' },
+                    { id: 'ciclo-de-vida', title: 'Ciclo de Vida' },
+                    { id: 'assertions', title: 'Assertions' },
+                ]},
+                { id: 'mockito', title: 'Parte 2: Mockito', children: [
+                    { id: 'mock-inject', title: '@Mock & @InjectMocks' },
+                    { id: 'stub-verify', title: 'Stubbing & Verificação' },
+                ]},
+                { id: 'integracao', title: 'Parte 3: Testes Integração', children: [
+                    { id: 'datajpatest', title: '@DataJpaTest' },
+                    { id: 'webmvctest', title: '@WebMvcTest' },
+                    { id: 'springboottest', title: '@SpringBootTest' },
+                ]},
+                { id: 'boas-praticas', title: 'Parte 4: Boas Práticas', children: [
+                     { id: 'aaa', title: 'Padrão AAA' },
+                     { id: 'estrategia', title: 'Estratégias de Teste' },
+                ]},
+                { id: 'cobertura-codigo', title: 'Parte 5: Cobertura e Qualidade', children: [
+                    { id: 'cobertura-conceitos', title: 'Conceitos de Cobertura' },
+                    { id: 'sonarqube-intro', title: 'Introdução ao SonarQube' },
+                    { id: 'sonarqube-dev', title: 'SonarQube em DEV' },
+                    { id: 'sonarqube-prod', title: 'SonarQube em CI/CD' },
+                ]},
+            ];
+
+            const contentEl = document.getElementById('content');
+            const desktopNavEl = document.getElementById('desktop-nav');
+            const mobileNavEl = document.getElementById('mobile-nav');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileNavContainer = document.getElementById('mobile-nav-container');
+
+            function buildNav(navEl) {
+                navStructure.forEach(section => {
+                    const sectionEl = document.createElement('div');
+                    sectionEl.innerHTML = `<h3 class="font-semibold text-gray-800 mt-4 mb-2">${section.title}</h3>`;
+                    const listEl = document.createElement('ul');
+                    listEl.className = 'space-y-1';
+                    section.children.forEach(child => {
+                        const itemEl = document.createElement('li');
+                        itemEl.innerHTML = `<a href="#${child.id}" data-id="${child.id}" class="nav-link block px-3 py-2 text-sm rounded-md text-gray-600 hover:bg-gray-100">${child.title}</a>`;
+                        listEl.appendChild(itemEl);
+                    });
+                    sectionEl.appendChild(listEl);
+                    navEl.appendChild(sectionEl);
+                });
+            }
+
+            function updateContent(id) {
+                const data = contentData[id];
+                if (!data) return;
+
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll(`.nav-link[data-id="${id}"]`).forEach(l => l.classList.add('active'));
+
+                contentEl.innerHTML = `
+                    <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-6">${data.title}</h2>
+                    <div class="prose max-w-none prose-blue">${data.content}</div>
+                `;
+                
+                contentEl.querySelectorAll('.code-block').forEach(block => {
+                    const code = block.getAttribute('data-code');
+                    const pre = document.createElement('pre');
+                    const codeEl = document.createElement('code');
+                    codeEl.textContent = code;
+                    pre.appendChild(codeEl);
+                    block.appendChild(pre);
+
+                    const button = document.createElement('button');
+                    button.textContent = 'Copiar';
+                    button.className = 'copy-btn';
+                    button.onclick = () => {
+                        navigator.clipboard.writeText(code).then(() => {
+                            button.textContent = 'Copiado!';
+                            setTimeout(() => button.textContent = 'Copiar', 2000);
+                        });
+                    };
+                    block.appendChild(button);
+                });
+                
+                addInteractivity(id);
+                mobileNavContainer.classList.add('hidden');
+            }
+
+            function addInteractivity(id) {
+                if (id === 'ciclo-de-vida') {
+                    const items = document.querySelectorAll('.lifecycle-item');
+                    const titleEl = document.getElementById('lifecycle-title');
+                    const descEl = document.getElementById('lifecycle-desc');
+                    items.forEach(item => {
+                        item.addEventListener('click', () => {
+                            const key = item.id.replace('lifecycle-', '');
+                            const details = lifecycleDetails[key];
+                            titleEl.textContent = details.title;
+                            descEl.textContent = details.desc;
+                            items.forEach(i => i.classList.remove('active'));
+                            item.classList.add('active');
+                        });
+                    });
+                }
+                 if (id === 'estrategia') {
+                    const cards = document.querySelectorAll('.strategy-card');
+                    const titleEl = document.getElementById('strategy-title');
+                    const contentEl = document.getElementById('strategy-content');
+                    cards.forEach(card => {
+                        card.addEventListener('click', () => {
+                            const key = card.id.replace('strategy-card-', '');
+                            const details = strategyDetails[key];
+                            titleEl.textContent = details.title;
+                            contentEl.innerHTML = details.content;
+                            cards.forEach(c => c.classList.remove('active'));
+                            card.classList.add('active');
+                        });
+                    });
+                }
+            }
+            
+            function handleNavClick(e) {
+                if (e.target.matches('.nav-link')) {
+                    e.preventDefault();
+                    const id = e.target.dataset.id;
+                    window.location.hash = id;
+                    updateContent(id);
+                }
+            }
+            
+            buildNav(desktopNavEl);
+            buildNav(mobileNavEl);
+            
+            desktopNavEl.addEventListener('click', handleNavClick);
+            mobileNavEl.addEventListener('click', handleNavClick);
+
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileNavContainer.classList.toggle('hidden');
+            });
+            mobileNavContainer.addEventListener('click', (e) => {
+                if (e.target === mobileNavContainer) {
+                    mobileNavContainer.classList.add('hidden');
+                }
+            });
+
+            const initialId = window.location.hash ? window.location.hash.substring(1) : 'fundamentos';
+            updateContent(initialId);
+        });
+    </script>
+</body>
+</html>

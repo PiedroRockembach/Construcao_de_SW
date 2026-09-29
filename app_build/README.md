@@ -71,6 +71,33 @@ Todas as requisições apontam estritamente para o **API Gateway**:
 
 ---
 
+## 🧪 Testes automatizados
+
+Os três microsserviços de domínio (`pecas-service`, `clientes-service`, `representantes-service`)
+têm suíte própria com JUnit 5, Mockito e Spring Boot Test — **69 testes** no total (23 por serviço).
+
+| Camada | Arquivo | Estratégia | Isolamento |
+| :--- | :--- | :--- | :--- |
+| Serviço | `service/*ServiceTest.java` | JUnit 5 + `@ExtendWith(MockitoExtension.class)` | Repositório mockado com `@Mock`; métricas via `SimpleMeterRegistry` — sem Spring e sem banco |
+| Controller | `controller/*ControllerTest.java` | `@WebMvcTest` + `MockMvc` | Só a fatia web sobe; o serviço é um `@MockBean` — nenhuma regra de negócio é executada |
+| Persistência | `repository/*RepositoryTest.java` | `@DataJpaTest` + `TestEntityManager` | Só o JPA sobe, sobre H2 em memória, com rollback por teste |
+| Integração | `*IntegracaoTest.java` | `@SpringBootTest` + `@AutoConfigureMockMvc` | Contexto completo (web + serviço + JPA), fluxo ponta a ponta |
+
+O `src/test/resources/application.yml` de cada serviço desativa o Config Server e o Eureka,
+de modo que os testes rodam sem nenhuma infraestrutura externa no ar.
+
+```bash
+cd app_build
+mvn test                      # toda a suíte
+mvn -pl clientes-service test # apenas um serviço
+```
+
+> O código é compilado para Java 17, mas os testes rodam na JVM instalada na máquina.
+> O `pom.xml` pai fixa versões mais novas de Mockito e Byte Buddy do que as do Spring Boot 3.2.5,
+> para que os mocks de classe (`@MockBean`) também funcionem em JDKs recentes.
+
+---
+
 ## 📊 Observabilidade (Métricas: Micrometer + Prometheus + Grafana)
 
 Todos os módulos expõem métricas em `/actuator/prometheus` (tag comum `application`). O `start-all.sh` sobe automaticamente

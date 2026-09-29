@@ -30,6 +30,14 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <!--
+            O codigo e compilado para o Java 17, mas os testes rodam na JVM instalada
+            na maquina. O Mockito/Byte Buddy que vem com o Spring Boot 3.2.5 nao gera
+            mocks de classe em JVMs mais novas (falha com "Mockito cannot mock this
+            class"), entao sobrescrevemos as versoes gerenciadas pelo BOM.
+        -->
+        <mockito.version>5.20.0</mockito.version>
+        <byte-buddy.version>1.17.8</byte-buddy.version>
     </properties>
 
     <dependencyManagement>
